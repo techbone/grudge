@@ -11,8 +11,8 @@ contract Deploy is Script {
     address constant TOKEN = 0x350035555E10d9AfAF1566AaebfCeD5BA6C27777;
 
     function run() external returns (Grudge g) {
-        uint128 scrub = uint128(vm.envOr("SCRUB_PRICE", uint256(1_000e18)));
-        uint128 truce = uint128(vm.envOr("TRUCE_PRICE", uint256(500e18)));
+        uint128 scrub = uint128(vm.envOr("SCRUB_PRICE", uint256(250e18)));
+        uint128 truce = uint128(vm.envOr("TRUCE_PRICE", uint256(250e18)));
         uint16 fee = uint16(vm.envOr("BOUNTY_FEE_BPS", uint256(1000)));
 
         vm.startBroadcast();
