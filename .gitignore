@@ -1,0 +1,27 @@
+# deps
+node_modules/
+.pnp*
+
+# next
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/*/31337/
+contracts/broadcast/**/dry-run/
+
+# env
+.env
+.env.*
+!.env.example
+
+# misc
+.DS_Store
+.vercel
+.cache/
+coverage/
+*.log
