@@ -33,6 +33,84 @@ export const grudgeAbi = [
   },
   {
     "type": "function",
+    "name": "ACT_BOUNTY_CLAIMED",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "ACT_BOUNTY_POSTED",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "ACT_PAYBACK",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "ACT_PRANK",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "ACT_SCRUB",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "ACT_TRUCE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "BOUNTY_LOCK",
     "inputs": [],
     "outputs": [
@@ -218,6 +296,81 @@ export const grudgeAbi = [
   },
   {
     "type": "function",
+    "name": "chogLogLength",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getChogLog",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "start",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "count",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "out",
+        "type": "tuple[]",
+        "internalType": "struct Grudge.Entry[]",
+        "components": [
+          {
+            "name": "act",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "from",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "to",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "kind",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "at",
+            "type": "uint32",
+            "internalType": "uint32"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getChogs",
     "inputs": [
       {
@@ -301,6 +454,57 @@ export const grudgeAbi = [
   },
   {
     "type": "function",
+    "name": "getLog",
+    "inputs": [
+      {
+        "name": "start",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "count",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "out",
+        "type": "tuple[]",
+        "internalType": "struct Grudge.Entry[]",
+        "components": [
+          {
+            "name": "act",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "from",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "to",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "kind",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "at",
+            "type": "uint32",
+            "internalType": "uint32"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "heat",
     "inputs": [
       {
@@ -343,6 +547,19 @@ export const grudgeAbi = [
         "name": "",
         "type": "uint32",
         "internalType": "uint32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "logLength",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"

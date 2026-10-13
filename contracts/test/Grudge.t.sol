@@ -334,4 +334,46 @@ contract GrudgeTest is Test {
         assertEq(g.scrubPrice(), 1);
         assertEq(g.bountyFeeBps(), 300);
     }
+
+    // ── history log ──
+
+    function test_log_records_every_action_in_order() public {
+        vm.prank(carol);
+        g.postBounty(3, 1000e18);
+        vm.prank(alice);
+        g.prank(1, 3, 2); // also claims the bounty
+        vm.prank(bob);
+        g.payback(3, 1, 4);
+        vm.prank(bob);
+        g.scrub(3, 0);
+
+        assertEq(g.logLength(), 5);
+        Grudge.Entry[] memory all = g.getLog(0, 10);
+        assertEq(all.length, 5);
+        assertEq(all[0].act, g.ACT_BOUNTY_POSTED());
+        assertEq(all[0].from, 0);
+        assertEq(all[0].to, 3);
+        assertEq(all[1].act, g.ACT_PRANK());
+        assertEq(all[1].kind, 2);
+        assertEq(all[2].act, g.ACT_BOUNTY_CLAIMED());
+        assertEq(all[3].act, g.ACT_PAYBACK());
+        assertEq(all[3].from, 3);
+        assertEq(all[4].act, g.ACT_SCRUB());
+
+        // #3 was involved in all five, #1 in three (prank, claim, payback)
+        assertEq(g.chogLogLength(3), 5);
+        assertEq(g.chogLogLength(1), 3);
+        Grudge.Entry[] memory one = g.getChogLog(1, 1, 10);
+        assertEq(one.length, 2);
+        assertEq(one[0].act, g.ACT_BOUNTY_CLAIMED());
+        assertEq(one[1].act, g.ACT_PAYBACK());
+    }
+
+    function test_log_paging_clips_to_end() public {
+        vm.prank(alice);
+        g.prank(1, 3, 0);
+        assertEq(g.getLog(1, 10).length, 0);
+        assertEq(g.getLog(0, 0).length, 0);
+        assertEq(g.getChogLog(4, 0, 10).length, 0);
+    }
 }

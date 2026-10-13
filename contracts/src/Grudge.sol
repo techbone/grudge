@@ -54,6 +54,22 @@ contract Grudge {
         uint32 createdAt;
     }
 
+    /// One slot per action. The log is the game's history, readable without an indexer.
+    struct Entry {
+        uint8 act; // ACT_*
+        uint16 from; // acting Chog (0 when none, e.g. a bounty posted from a plain wallet)
+        uint16 to; // target Chog
+        uint8 kind; // prank kind, or scar slot for scrubs
+        uint32 at;
+    }
+
+    uint8 public constant ACT_PRANK = 0;
+    uint8 public constant ACT_PAYBACK = 1;
+    uint8 public constant ACT_SCRUB = 2;
+    uint8 public constant ACT_TRUCE = 3;
+    uint8 public constant ACT_BOUNTY_POSTED = 4;
+    uint8 public constant ACT_BOUNTY_CLAIMED = 5;
+
     mapping(uint256 => Stats) internal _stats;
     mapping(uint256 => Scar[8]) internal _scars;
     mapping(bytes32 => Beef) internal _beefs; // unordered pair
@@ -61,6 +77,8 @@ contract Grudge {
     mapping(uint256 => mapping(uint256 => uint32)) public lastPrankDay; // from => to => day + 1
     mapping(uint256 => mapping(uint256 => bool)) public truceOffered; // proposer => other
     mapping(uint256 => Bounty) public bounties; // target => bounty (one at a time)
+    Entry[] internal _log;
+    mapping(uint256 => uint32[]) internal _chogLog; // tokenId => indexes into _log
 
     address public owner;
     uint128 public scrubPrice;
@@ -157,6 +175,7 @@ contract Grudge {
         b.lastAt = uint32(block.timestamp);
 
         emit Pranked(from, to, kind, heavy, slot);
+        _record(heavy ? ACT_PAYBACK : ACT_PRANK, from, to, kind);
 
         Bounty memory bounty = bounties[to];
         if (bounty.amount != 0 && bounty.funder != msg.sender) {
@@ -167,6 +186,7 @@ contract Grudge {
             if (fee != 0) _send(DEAD, fee);
             _send(msg.sender, paid);
             emit BountyClaimed(to, from, msg.sender, paid);
+            _record(ACT_BOUNTY_CLAIMED, from, to, 0);
         }
     }
 
@@ -180,6 +200,7 @@ contract Grudge {
         delete _scars[id][slot];
         _burnFrom(msg.sender, scrubPrice);
         emit Scrubbed(id, slot);
+        _record(ACT_SCRUB, id, id, slot);
     }
 
     /// @notice Burn $CHOG to offer `other` a truce. If `other` already offered one, this accepts it:
@@ -195,6 +216,7 @@ contract Grudge {
             delete paybackUntil[mine][other];
             delete paybackUntil[other][mine];
             emit Truce(other, mine);
+            _record(ACT_TRUCE, mine, other, 0);
         } else {
             truceOffered[mine][other] = true;
             emit TruceOffered(mine, other);
@@ -210,6 +232,7 @@ contract Grudge {
         bounties[target] = Bounty({funder: msg.sender, amount: amount, createdAt: uint32(block.timestamp)});
         _pull(msg.sender, amount);
         emit BountyPosted(target, msg.sender, amount);
+        _record(ACT_BOUNTY_POSTED, 0, target, 0);
     }
 
     /// @notice Funder takes an unclaimed bounty back once BOUNTY_LOCK has passed.
@@ -259,6 +282,31 @@ contract Grudge {
         }
     }
 
+    function logLength() external view returns (uint256) {
+        return _log.length;
+    }
+
+    /// @notice Global history, oldest first: entries [start, start + count), clipped to the end.
+    function getLog(uint256 start, uint256 count) external view returns (Entry[] memory out) {
+        uint256 end = _min(start + count, _log.length);
+        if (start >= end) return out;
+        out = new Entry[](end - start);
+        for (uint256 i = start; i < end; ++i) out[i - start] = _log[i];
+    }
+
+    function chogLogLength(uint16 id) external view returns (uint256) {
+        return _chogLog[id].length;
+    }
+
+    /// @notice Everything done by or to `id`, oldest first.
+    function getChogLog(uint16 id, uint256 start, uint256 count) external view returns (Entry[] memory out) {
+        uint32[] storage idx = _chogLog[id];
+        uint256 end = _min(start + count, idx.length);
+        if (start >= end) return out;
+        out = new Entry[](end - start);
+        for (uint256 i = start; i < end; ++i) out[i - start] = _log[idx[i]];
+    }
+
     // ───────────────────────────── admin ─────────────────────────────
 
     function setPrices(uint128 scrub_, uint128 truce_, uint16 bountyFeeBps_) external {
@@ -277,6 +325,17 @@ contract Grudge {
     }
 
     // ───────────────────────────── internals ─────────────────────────────
+
+    function _record(uint8 act, uint16 from, uint16 to, uint8 kind) internal {
+        uint32 i = uint32(_log.length);
+        _log.push(Entry({act: act, from: from, to: to, kind: kind, at: uint32(block.timestamp)}));
+        if (from != 0) _chogLog[from].push(i);
+        if (to != 0 && to != from) _chogLog[to].push(i);
+    }
+
+    function _min(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a < b ? a : b;
+    }
 
     function _today() internal view returns (uint32) {
         return uint32(block.timestamp / 1 days);
