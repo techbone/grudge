@@ -25,3 +25,7 @@ contracts/broadcast/**/dry-run/
 .cache/
 coverage/
 *.log
+
+# forge run history duplicates; run-latest.json is the record
+contracts/broadcast/**/run-[0-9]*.json
+contracts/broadcast/**/*.lock
