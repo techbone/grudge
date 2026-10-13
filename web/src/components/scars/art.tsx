@@ -401,7 +401,15 @@ function PaybackStamp({ seed }: { seed: number }) {
 export function ScarDefs() {
   return (
     <svg width={0} height={0} aria-hidden style={{ position: "absolute" }}>
-      <defs>
+      <ScarFilterDefs />
+    </svg>
+  );
+}
+
+/** The filter <defs> on their own, for standalone SVGs such as Wall textures. */
+export function ScarFilterDefs() {
+  return (
+    <defs>
         <filter id="spray" x="-20%" y="-20%" width="140%" height="140%">
           <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves={2} seed={3} result="n" />
           <feDisplacementMap in="SourceGraphic" in2="n" scale={7} result="rough" />
@@ -428,7 +436,6 @@ export function ScarDefs() {
           <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.9" result="holes" />
           <feComposite in="SourceGraphic" in2="holes" operator="in" />
         </filter>
-      </defs>
-    </svg>
+    </defs>
   );
 }

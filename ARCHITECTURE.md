@@ -74,8 +74,8 @@ No backend and no database. All state lives in `Grudge.sol` and its events. Art 
 | `/sandbox` | **The judge path.** No wallet needed. A fake Chog, a bot opponent and a fast clock run on the local TS engine so anyone can see a prank, a payback and a scrub in two minutes. |
 
 - Wallet: wagmi + viem with injected wallets and our own connect UI (RainbowKit dropped: it needs a WalletConnect project id and fights the custom look). On the local fork, a dev-only "play as the holder of Chog #N" uses anvil impersonation.
-- Rendering: PixiJS v8. Each prank kind is a **scene**: a small timeline of sprite and particle layers that plays over the target's art, then settles into its permanent scar layer.
-- Sound: Howler SFX for each scene, with a mute toggle remembered in localStorage.
+- Rendering: prank **scenes** are SVG + GSAP (DrawSVG, MotionPath) drawn over the Chog art in a 1000×1000 box. Each scene is built from `from` tweens, so it settles exactly into the permanent scar, and it uses the same seed (attacker, kind, block time, target) as the stored scar, so the handoff is seamless. PixiJS v8 is used only for the Wall, where 1,969 tiles need WebGL. Wall tiles show the same scar art, rendered to textures.
+- Sound: synthesized in the browser with WebAudio (spray hiss, splat, whoosh, boing, stamp). No audio files. Mute toggle remembered in localStorage.
 - Provenance banner: reads ERC-721 `Transfer` events for the token. If the current owner is new since the last prank, the rap sheet opens with "You inherited this" and lists scars and beefs.
 
 ### 3. `engine/` — rules in TypeScript
@@ -119,8 +119,13 @@ mapping(bytes32 => Beef) beefs;   // key = (min(a,b), max(a,b)) → heat, lastAt
 struct Bounty { uint16 target; address funder; uint96 amount; uint32 createdAt; bool open; }
 ```
 
-Events: `Pranked(from, to, kind, heavy, slot)`, `Payback(from, to, ...)`, `Scrubbed(id, slot)`, `Truce(a, b)`, `BountyPosted(id, target, amount)`, `BountyClaimed(id, by)`.
-Views: `getChogs(start, count)` returns compact scar data so the Wall loads in a few calls, plus `getBeef(a, b)`.
+Events: `Pranked`, `Scrubbed`, `TruceOffered`, `Truce`, `BountyPosted`, `BountyClaimed`, `BountyCancelled`.
+
+**Onchain history log.** Monad's public RPC limits `eth_getLogs` to 100 blocks (~40 s), so rebuilding history from events would need an indexer. Instead every action appends one 32-byte `Entry {act, from, to, kind, at}` to `_log`, and each Chog keeps an index into it. That adds roughly 50k gas per prank and keeps Grudge indexer-free:
+- `logLength()` + `getLog(start, count)`: global feed. The Wall polls the length every 1.5 s and pulls only new entries.
+- `chogLogLength(id)` + `getChogLog(id, start, count)`: a Chog's rap sheet.
+
+Views: `getChogs(start, count)` returns stats and scars in pages of 250, so the Wall loads in 8 calls. Also `heat(a, b)`, `movesLeft(id)`, `paybackUntil(victim, attacker)`.
 
 ## Key demo flows
 
@@ -134,7 +139,8 @@ Views: `getChogs(start, count)` returns compact scar data so the Wall loads in a
 
 - **Monad mainnet + Foundry:** that's where Chog Genesis lives. Foundry tests run against a mainnet fork, so the real `ownerOf` is exercised.
 - **Next.js + Vercel:** playbook default, gives a live link early.
-- **No database:** contract events and views are enough at 1,969 tokens, and "all onchain" is part of how we differ from Mischief.
+- **No database, no indexer:** the onchain log and paged views cover the feed, rap sheets and the Wall at 1,969 tokens, and "all onchain" is part of how we differ from Mischief.
+- **Next.js 16 with `cacheComponents`:** route params, search params and `Date.now()` must sit behind Suspense or run after mount; the pages follow that pattern.
 - **PixiJS:** WebGL is needed for animated scenes and a 1,969-tile wall at 60 fps.
 
 ## Visual direction

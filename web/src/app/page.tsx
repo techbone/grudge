@@ -1,5 +1,5 @@
-import { PrankRoom } from "@/components/prank-room";
+import { Wall } from "@/components/wall/wall";
 
 export default function Home() {
-  return <PrankRoom />;
+  return <Wall />;
 }
