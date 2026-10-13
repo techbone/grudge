@@ -59,7 +59,8 @@ No backend and no database. All state lives in `Grudge.sol` and its events. Art 
 - Constructor takes the Chog Genesis address, the $CHOG address and the price table.
 - Every action checks `IERC721(chog).ownerOf(id) == msg.sender` at call time, so a buyer controls the token's state immediately and the seller loses it.
 - `from` and `to` must have different owners (stops one wallet farming itself). No admin power over any token's state.
-- Owner-only: `setPrices`, `setBountyFeeBps`.
+- Owner-only: `setPrices` (scrub, truce, bounty fee), `setOwner`.
+- The full rule set ships before the mainnet deploy, because the contract can't be changed afterwards. Adding rules later would mean redeploying and wiping real players' scars.
 
 ### 2. `web/` — Next.js app (App Router, TypeScript)
 
@@ -72,7 +73,7 @@ No backend and no database. All state lives in `Grudge.sol` and its events. Art 
 | `/bounties` | Open bounties on specific Chogs, claimable by landing a prank on the target. |
 | `/sandbox` | **The judge path.** No wallet needed. A fake Chog, a bot opponent and a fast clock run on the local TS engine so anyone can see a prank, a payback and a scrub in two minutes. |
 
-- Wallet: wagmi + viem + RainbowKit, Monad mainnet only.
+- Wallet: wagmi + viem with injected wallets and our own connect UI (RainbowKit dropped: it needs a WalletConnect project id and fights the custom look). On the local fork, a dev-only "play as the holder of Chog #N" uses anvil impersonation.
 - Rendering: PixiJS v8. Each prank kind is a **scene**: a small timeline of sprite and particle layers that plays over the target's art, then settles into its permanent scar layer.
 - Sound: Howler SFX for each scene, with a mute toggle remembered in localStorage.
 - Provenance banner: reads ERC-721 `Transfer` events for the token. If the current owner is new since the last prank, the rap sheet opens with "You inherited this" and lists scars and beefs.
@@ -83,7 +84,7 @@ A pure-function port of the contract rules (daily moves, heat, payback eligibili
 
 ### 4. `scripts/snapshot`
 
-Reads `tokenURI` for ids 0–1968, fetches metadata through IPFS gateways, writes `data/chogs.json` (id, name, traits, image CID) and downsamples each image to 256px WebP in `public/chogs/`.
+Reads `tokenURI` for ids 1–1969 (metadata files are shuffled: token 1 → `1462.json`), fetches metadata through the Pinata gateway (ipfs.io and dweb.link no longer serve raw files), writes `data/chogs.json` (id, name, traits, image CID) and downsamples each image to 256px WebP in `public/chogs/`.
 
 ## Game rules (v1)
 
@@ -153,7 +154,7 @@ Hand-made and chunky, not a crypto dashboard. Paper-and-marker feel for the chro
 
 | # | Target | Done when |
 |---|---|---|
-| **M1** — thinnest slice | Oct 15 | Grudge.sol with prank, daily moves and scars, tested on a mainnet fork. Next.js app: connect wallet, see your Chogs, prank a target, see the scar list update. Running locally against an anvil fork. |
+| **M1** — thinnest slice | Oct 15 | Full Grudge.sol (all rules, since it's immutable after M2), unit tests plus a mainnet-fork test. Next.js app: connect wallet, see your Chogs, prank a target, see scars, pay back. Running locally against an anvil fork. |
 | **M2** — the spectacle | Oct 17 | Metadata snapshot, Wall with live events, first 3 prank scenes with sound, rap sheet page. **Mainnet deploy and announce** in the Chog Discord and on X, so real usage exists before judging. |
 | **M3** — escalation | Oct 19 | Payback and heat, remaining scenes, feud graph, $CHOG scrub, truce and bounties, sale ceremony banner. |
 | **M4** — judge-proof | Oct 21 | Sandbox mode, onboarding and empty, loading and error states, polish pass, OG images. |
