@@ -50,7 +50,8 @@ export function Wall() {
       scene = new WallScene(P);
       scene.onTileClick = (id) => router.push(`/chog/${id}`);
       scene.onHover = (id, x, y) => setHover(id ? { id, x, y } : null);
-      scene.insetRight = window.matchMedia("(min-width: 768px)").matches ? 352 : 0;
+      const wide = window.matchMedia("(min-width: 768px)").matches;
+      scene.insets = wide ? { top: 110, right: 352, bottom: 84, left: 24 } : { top: 92, right: 12, bottom: 128, left: 12 };
       await scene.init(host.current);
       if (cancelled) return scene.destroy();
       sceneRef.current = scene;
@@ -163,8 +164,8 @@ export function Wall() {
         </div>
       )}
 
-      <div className="pointer-events-none absolute top-4 left-4 flex flex-col gap-1 sm:top-6 sm:left-6">
-        <h1 className="font-display text-4xl font-extrabold tracking-tight drop-shadow-[0_2px_0_var(--paper)] sm:text-5xl">The Wall</h1>
+      <div className="pointer-events-none absolute top-4 left-4 flex flex-col gap-0.5 rounded-2xl border-2 border-ink bg-paper/95 px-4 py-2.5 shadow-[4px_4px_0_0_var(--ink)] sm:top-6 sm:left-6">
+        <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">The Wall</h1>
         <p className="font-mono text-xs text-muted">
           1,969 Chogs{total !== undefined && <> · {total.toLocaleString()} things done onchain</>}
         </p>

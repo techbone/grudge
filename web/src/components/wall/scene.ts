@@ -44,8 +44,8 @@ export class WallScene {
   private pointers = new Map<number, { x: number; y: number }>();
   private pinchDist = 0;
   private destroyed = false;
-  /** Screen pixels covered by UI on the right (the Live panel), kept clear by fit and flyTo. */
-  insetRight = 0;
+  /** Screen pixels covered by UI (title, Live panel, controls), kept clear by fit and flyTo. */
+  insets = { top: 0, right: 0, bottom: 0, left: 0 };
   onTileClick?: (id: number) => void;
   onHover?: (id: number | null, x: number, y: number) => void;
 
@@ -107,13 +107,19 @@ export class WallScene {
     return { w: COLS * STEP, h: Math.ceil(MAX_ID / COLS) * STEP };
   }
 
+  /** The part of the screen not covered by UI. */
+  private get view() {
+    const { width, height } = this.app.screen;
+    const { top, right, bottom, left } = this.insets;
+    return { x: left, y: top, w: width - left - right, h: height - top - bottom };
+  }
+
   fit() {
-    const { height } = this.app.screen;
-    const width = this.app.screen.width - this.insetRight;
+    const v = this.view;
     const { w, h } = this.worldSize;
-    const s = Math.min(width / w, height / h) * 0.92;
+    const s = Math.min(v.w / w, v.h / h) * 0.96;
     this.world.scale.set(s);
-    this.world.position.set((width - w * s) / 2, (height - h * s) / 2);
+    this.world.position.set(v.x + (v.w - w * s) / 2, v.y + (v.h - h * s) / 2);
   }
 
   zoomBy(f: number, cx = this.app.screen.width / 2, cy = this.app.screen.height / 2) {
@@ -129,10 +135,9 @@ export class WallScene {
   /** Smoothly fly the camera to a tile. */
   flyTo(id: number, scale = 1.6, duration = 1.1) {
     const { x, y } = tileCenter(id);
-    const { height } = this.app.screen;
-    const width = this.app.screen.width - this.insetRight;
+    const v = this.view;
     const cam = { s: this.world.scale.x, x: this.world.x, y: this.world.y };
-    const target = { s: scale, x: width / 2 - x * scale, y: height / 2 - y * scale };
+    const target = { s: scale, x: v.x + v.w / 2 - x * scale, y: v.y + v.h / 2 - y * scale };
     return gsap.to(cam, {
       s: target.s,
       x: target.x,
