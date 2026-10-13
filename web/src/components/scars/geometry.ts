@@ -95,14 +95,28 @@ export function tornPatchPath(r: () => number, brimY: number) {
   return d + "Z";
 }
 
-/** Skin trait → fill for drawn-on body parts (bald heads). */
+/** Skin trait → face colour for drawn-on body parts (bald heads). In this collection "Skin"
+ *  mostly sets hair and body colour; faces stay cream except a few special skins. */
 export function skinColor(skin?: string) {
-  const s = (skin || "").toLowerCase();
-  if (s.includes("dark") || s.includes("brown") || s.includes("black")) return "#5a3b2a";
-  if (s.includes("tan")) return "#c48e63";
-  if (s.includes("pink")) return "#f6dfe0";
-  if (s.includes("green") || s.includes("zombie")) return "#a9d28c";
-  if (s.includes("blue")) return "#a7c7f2";
-  if (s.includes("gold")) return "#e8c35a";
-  return "#f3ead8";
+  switch ((skin || "").toLowerCase()) {
+    case "black":
+      return "#4a3226";
+    case "white":
+      return "#ffffff";
+    case "green":
+    case "jade":
+      return "#a9d28c";
+    case "blue":
+      return "#a7c7f2";
+    case "metal":
+      return "#c3c7cf";
+    case "grey":
+      return "#b4b4b4";
+    case "purple":
+      return "#c6b3ea";
+    case "beige":
+      return "#ead8b8";
+    default:
+      return "#f3ead8";
+  }
 }

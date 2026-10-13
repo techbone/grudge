@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Portrait, type PortraitScar } from "@/components/scars/portrait";
 import { PRANKS } from "@/lib/game";
-import { setMuted, useMuted } from "@/lib/sfx";
 
 const randomSeed = () => Math.floor(Math.random() * 2 ** 31);
 
@@ -14,7 +13,6 @@ export default function Studio() {
   const [heavy, setHeavy] = useState(false);
   const [scars, setScars] = useState<PortraitScar[]>([]);
   const [scene, setScene] = useState<PortraitScar | null>(null);
-  const muted = useMuted();
 
   function fire() {
     if (scene) return;
@@ -23,11 +21,9 @@ export default function Studio() {
 
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-10 px-4 py-8 sm:px-8">
-      <header className="flex items-baseline justify-between border-b-2 border-ink pb-4">
+      <header className="flex flex-col gap-1">
         <h1 className="font-display text-4xl font-extrabold tracking-tight">Prank studio</h1>
-        <button onClick={() => setMuted(!muted)} className="font-mono text-sm text-muted hover:text-ink">
-          sound {muted ? "off" : "on"}
-        </button>
+        <p className="text-muted">Try every prank on any Chog. Nothing here touches the chain.</p>
       </header>
 
       <section className="grid gap-8 lg:grid-cols-[minmax(0,520px)_1fr]">

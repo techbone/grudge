@@ -1,5 +1,5 @@
-import { Game } from "@/components/game";
+import { PrankRoom } from "@/components/prank-room";
 
 export default function Home() {
-  return <Game />;
+  return <PrankRoom />;
 }

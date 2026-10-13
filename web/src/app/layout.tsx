@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Geist, Geist_Mono, Permanent_Marker } from "next/font/google";
 import { ScarDefs } from "@/components/scars/art";
+import { SiteHeader } from "@/components/site-header";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -39,7 +40,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full">
         <ScarDefs />
-        <Providers>{children}</Providers>
+        <Providers>
+          <SiteHeader />
+          {children}
+        </Providers>
       </body>
     </html>
   );
