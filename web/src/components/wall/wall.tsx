@@ -50,6 +50,7 @@ export function Wall() {
       scene = new WallScene(P);
       scene.onTileClick = (id) => router.push(`/chog/${id}`);
       scene.onHover = (id, x, y) => setHover(id ? { id, x, y } : null);
+      scene.insetRight = window.matchMedia("(min-width: 768px)").matches ? 352 : 0;
       await scene.init(host.current);
       if (cancelled) return scene.destroy();
       sceneRef.current = scene;

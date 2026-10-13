@@ -44,6 +44,8 @@ export class WallScene {
   private pointers = new Map<number, { x: number; y: number }>();
   private pinchDist = 0;
   private destroyed = false;
+  /** Screen pixels covered by UI on the right (the Live panel), kept clear by fit and flyTo. */
+  insetRight = 0;
   onTileClick?: (id: number) => void;
   onHover?: (id: number | null, x: number, y: number) => void;
 
@@ -106,9 +108,10 @@ export class WallScene {
   }
 
   fit() {
-    const { width, height } = this.app.screen;
+    const { height } = this.app.screen;
+    const width = this.app.screen.width - this.insetRight;
     const { w, h } = this.worldSize;
-    const s = Math.min(width / w, height / h) * 0.94;
+    const s = Math.min(width / w, height / h) * 0.92;
     this.world.scale.set(s);
     this.world.position.set((width - w * s) / 2, (height - h * s) / 2);
   }
@@ -126,7 +129,8 @@ export class WallScene {
   /** Smoothly fly the camera to a tile. */
   flyTo(id: number, scale = 1.6, duration = 1.1) {
     const { x, y } = tileCenter(id);
-    const { width, height } = this.app.screen;
+    const { height } = this.app.screen;
+    const width = this.app.screen.width - this.insetRight;
     const cam = { s: this.world.scale.x, x: this.world.x, y: this.world.y };
     const target = { s: scale, x: width / 2 - x * scale, y: height / 2 - y * scale };
     return gsap.to(cam, {
