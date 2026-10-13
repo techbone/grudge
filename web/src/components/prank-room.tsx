@@ -303,7 +303,7 @@ function Incoming({ mine, rawScars, disabled, onPayback }: { mine: number; rawSc
   const open = new Map<number, number>();
   attackers.forEach((by, i) => {
     const r = paybacks.data?.[i];
-    if (r?.status === "success" && Number(r.result) >= now) open.set(by, Number(r.result));
+    if (r?.status === "success" && now > 0 && Number(r.result) >= now) open.set(by, Number(r.result));
   });
 
   return (

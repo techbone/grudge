@@ -57,6 +57,7 @@ export function explainError(err: unknown): string {
 }
 
 export function timeAgo(unix: number, now: number) {
+  if (!now) return "";
   const s = Math.max(0, now - unix);
   if (s < 60) return `${s}s ago`;
   if (s < 3600) return `${Math.floor(s / 60)}m ago`;

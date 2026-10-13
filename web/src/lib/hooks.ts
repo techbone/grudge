@@ -58,12 +58,17 @@ export function useChogOwner(id: number | undefined) {
   });
 }
 
-/** Unix seconds, refreshed every `intervalMs`, so render stays pure. */
+/** Unix seconds, refreshed every `intervalMs`. 0 until mounted, so prerendering stays pure. */
 export function useNow(intervalMs = 15_000) {
-  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  const [now, setNow] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setNow(Math.floor(Date.now() / 1000)), intervalMs);
-    return () => clearInterval(t);
+    const tick = () => setNow(Math.floor(Date.now() / 1000));
+    const first = setTimeout(tick, 0);
+    const t = setInterval(tick, intervalMs);
+    return () => {
+      clearTimeout(first);
+      clearInterval(t);
+    };
   }, [intervalMs]);
   return now;
 }

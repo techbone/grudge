@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Bricolage_Grotesque, Geist, Geist_Mono, Permanent_Marker } from "next/font/google";
 import { ScarDefs } from "@/components/scars/art";
 import { SiteHeader } from "@/components/site-header";
@@ -41,7 +42,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full">
         <ScarDefs />
         <Providers>
-          <SiteHeader />
+          <Suspense fallback={<div className="h-16 border-b-2 border-ink" />}>
+            <SiteHeader />
+          </Suspense>
           {children}
         </Providers>
       </body>
