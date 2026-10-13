@@ -32,6 +32,8 @@
   --color-ok: var(--ok);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-bricolage);
+  --font-marker: var(--font-permanent-marker);
 }
 
 body {
