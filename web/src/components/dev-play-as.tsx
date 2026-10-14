@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { encodeAbiParameters, keccak256, pad, parseUnits, toHex } from "viem";
 import { usePublicClient, useConnect } from "wagmi";
 import { mock } from "wagmi/connectors";
 import { monadLocal } from "@/lib/chains";
-import { CHOG_ADDRESS, chogOwnerAbi, isValidId } from "@/lib/game";
+import { CHOG_ADDRESS, CHOG_TOKEN_ADDRESS, chogOwnerAbi, isValidId } from "@/lib/game";
 
 async function anvil(method: string, params: unknown[]) {
   const res = await fetch(monadLocal.rpcUrls.default.http[0], {
@@ -19,7 +20,8 @@ async function anvil(method: string, params: unknown[]) {
 
 /**
  * Local fork only: act as whoever holds Chog #N on mainnet. Anvil impersonates the
- * holder, so transactions go through without their key. Never rendered on mainnet.
+ * holder (and tops them up with gas and test $CHOG), so transactions go through without
+ * their key. Never rendered on mainnet.
  */
 export function DevPlayAs() {
   const client = usePublicClient();
@@ -42,6 +44,9 @@ export function DevPlayAs() {
       });
       await anvil("anvil_impersonateAccount", [holder]);
       await anvil("anvil_setBalance", [holder, "0x8AC7230489E80000"]); // 10 MON for gas
+      // 10,000 test $CHOG: balances live in storage slot 0 of the token
+      const slot = keccak256(encodeAbiParameters([{ type: "address" }, { type: "uint256" }], [holder, 0n]));
+      await anvil("anvil_setStorageAt", [CHOG_TOKEN_ADDRESS, slot, pad(toHex(parseUnits("10000", 18)))]);
       await connectAsync({ connector: mock({ accounts: [holder] }) });
     } catch (e) {
       setError((e as Error).message);

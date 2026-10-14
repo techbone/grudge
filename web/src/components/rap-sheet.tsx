@@ -2,11 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useAccount, useReadContracts } from "wagmi";
+import { useState } from "react";
+import { parseUnits } from "viem";
+import { useAccount, useReadContract, useReadContracts } from "wagmi";
 import { chogLabel, getChog, portraitSrc } from "@/lib/chogs";
 import { PRANKS, timeAgo } from "@/lib/game";
-import { ACT, grudge, useChogLog, useChogState, type Entry } from "@/lib/grudge-data";
+import { ACT, grudge, topRivals, useChogLog, useChogState, type Entry } from "@/lib/grudge-data";
 import { useChogOwner, useNow } from "@/lib/hooks";
+import { fmtChog, useChogEconomy, useGrudgeTx } from "@/lib/tx";
 import { PrankIcon } from "./prank-icons";
 import { Portrait } from "./scars/portrait";
 import { short } from "./site-header";
@@ -65,6 +68,8 @@ export function RapSheet({ id }: { id: number }) {
               {isMine ? "Open the prank room" : "Prank this Chog"}
             </Link>
           </div>
+
+          <BountyPanel id={id} />
 
           <section className="flex flex-col gap-3">
             <h2 className="font-display text-xl font-bold">Rivals</h2>
@@ -187,16 +192,90 @@ function Line({ id, e }: { id: number; e: Entry }) {
   }
 }
 
-function topRivals(id: number, log: Entry[]) {
-  const m = new Map<number, { id: number; dealt: number; taken: number }>();
-  for (const e of log) {
-    if (e.act !== ACT.PRANK && e.act !== ACT.PAYBACK) continue;
-    const other = e.from === id ? e.to : e.from;
-    if (!other || other === id) continue;
-    const r = m.get(other) ?? { id: other, dealt: 0, taken: 0 };
-    if (e.from === id) r.dealt++;
-    else r.taken++;
-    m.set(other, r);
-  }
-  return [...m.values()].sort((a, b) => b.dealt + b.taken - (a.dealt + a.taken)).slice(0, 4);
+const BOUNTY_LOCK = 3 * 24 * 60 * 60;
+
+/** Put $CHOG on a Chog's head. The next Chog to prank it collects, minus a burned fee. */
+function BountyPanel({ id }: { id: number }) {
+  const { address } = useAccount();
+  const now = useNow();
+  const tx = useGrudgeTx();
+  const { bountyFeeBps, balance } = useChogEconomy();
+  const [amount, setAmount] = useState("1000");
+  const b = useReadContract({ ...grudge, functionName: "bounties", args: [BigInt(id)] });
+  const [funder, open, createdAt] = b.data ? [b.data[0] as string, b.data[1] as bigint, Number(b.data[2])] : ["", 0n, 0];
+  const fee = bountyFeeBps ?? 1000;
+  const isFunder = !!address && funder.toLowerCase() === address.toLowerCase();
+  const unlocksIn = createdAt + BOUNTY_LOCK - now;
+
+  let wei = 0n;
+  try {
+    wei = parseUnits(amount || "0", 18);
+  } catch {}
+  const tooMuch = balance !== undefined && wei > balance;
+
+  return (
+    <section className={`flex flex-col gap-3 rounded-2xl border-2 border-ink p-4 ${open > 0n ? "bg-accent text-ink" : ""}`}>
+      {open > 0n ? (
+        <>
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="font-display text-2xl font-extrabold">Bounty: {fmtChog(open)} $CHOG</h2>
+          </div>
+          <p className="text-sm font-semibold">
+            The next Chog to prank it collects {fmtChog((open * BigInt(10_000 - fee)) / 10_000n)} $CHOG. {fee / 100}% is burned.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link href={`/prank?target=${id}`} className="rounded-lg border-2 border-ink bg-ink px-4 py-2 font-bold text-paper">
+              Prank it to collect
+            </Link>
+            {isFunder &&
+              (unlocksIn > 0 ? (
+                <span className="font-mono text-xs">You can take it back in {Math.ceil(unlocksIn / 3600)}h if nobody collects.</span>
+              ) : (
+                <button
+                  onClick={() => tx.send({ fn: "cancelBounty", args: [id], okText: "Bounty withdrawn." })}
+                  disabled={tx.busy}
+                  className="rounded-lg border-2 border-ink bg-paper px-3 py-2 text-sm font-bold disabled:opacity-50"
+                >
+                  Take it back
+                </button>
+              ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <h2 className="font-display text-xl font-bold">Put a bounty on it</h2>
+          <p className="text-sm text-muted">Escrow $CHOG on this Chog. The next Chog to prank it collects, and {fee / 100}% is burned. You don&apos;t need a Chog to post one.</p>
+          {address ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="flex items-center rounded-lg border-2 border-ink font-mono">
+                <input
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+                  inputMode="decimal"
+                  aria-label="Bounty amount in $CHOG"
+                  className="w-28 bg-transparent px-3 py-2 outline-none"
+                />
+                <span className="pr-3 text-muted">$CHOG</span>
+              </span>
+              <button
+                onClick={() => tx.send({ fn: "postBounty", args: [id, wei], spend: wei, okText: `Bounty of ${fmtChog(wei)} $CHOG posted.` })}
+                disabled={tx.busy || wei === 0n || tooMuch}
+                className="rounded-lg border-2 border-ink bg-accent px-4 py-2 font-bold shadow-[3px_3px_0_0_var(--ink)] disabled:opacity-40 disabled:shadow-none"
+              >
+                Post bounty
+              </button>
+              {balance !== undefined && <span className="font-mono text-xs text-muted">you have {fmtChog(balance)}</span>}
+            </div>
+          ) : (
+            <p className="text-sm font-semibold">Connect a wallet to post one.</p>
+          )}
+        </>
+      )}
+      {tx.status.kind !== "idle" && (
+        <p role="status" className={`text-sm font-semibold ${tx.status.kind === "error" ? "text-danger" : ""}`}>
+          {tx.status.text}
+        </p>
+      )}
+    </section>
+  );
 }

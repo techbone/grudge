@@ -4,12 +4,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useAccount, useConnect, usePublicClient, useReadContracts, useWriteContract } from "wagmi";
+import { useAccount, useConnect, useReadContract, useReadContracts } from "wagmi";
 import { injected } from "wagmi/connectors";
 import { isLocal } from "@/lib/chains";
 import { chogLabel, getChog, portraitSrc } from "@/lib/chogs";
-import { explainError, GRUDGE_ADDRESS, isValidId, MAX_ID, MOVES_PER_DAY, PRANKS, timeAgo } from "@/lib/game";
-import { grudge, useChogState } from "@/lib/grudge-data";
+import { GRUDGE_ADDRESS, isValidId, MAX_ID, MOVES_PER_DAY, PRANKS, timeAgo } from "@/lib/game";
+import { grudge, topRivals, useChogLog, useChogState } from "@/lib/grudge-data";
+import { fmtChog, useChogEconomy, useGrudgeTx, type TxStatus } from "@/lib/tx";
 import { useChogOwner, useNow, useOwnedChogs } from "@/lib/hooks";
 import { scarSeed } from "./scars/geometry";
 import { Portrait, type PortraitScar } from "./scars/portrait";
@@ -86,12 +87,11 @@ function Lobby() {
 
 // ───────────────────────── the room ─────────────────────────
 
-type Status = { kind: "idle" | "pending" | "ok" | "error"; text?: string };
-
 function Room({ address, initialTarget }: { address: `0x${string}`; initialTarget?: number }) {
-  const client = usePublicClient();
   const qc = useQueryClient();
-  const { writeContractAsync } = useWriteContract();
+  const tx = useGrudgeTx();
+  const status = tx.status;
+  const economy = useChogEconomy();
   const owned = useOwnedChogs(address);
   const [picked, setPicked] = useState<number>();
   const mine = picked !== undefined && owned.data?.includes(picked) ? picked : owned.data?.[0];
@@ -99,13 +99,14 @@ function Room({ address, initialTarget }: { address: `0x${string}`; initialTarge
   const target = Number(targetText);
   const hasTarget = isValidId(target);
   const [kind, setKind] = useState(0);
-  const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [scene, setScene] = useState<PortraitScar | null>(null);
 
   const me = useChogState(mine);
   const victim = useChogState(hasTarget ? target : undefined);
   const victimOwner = useChogOwner(hasTarget ? target : undefined);
-  const busy = status.kind === "pending" || !!scene;
+  const busy = tx.busy || !!scene;
+  const bounty = useReadContract({ ...grudge, functionName: "bounties", args: [BigInt(hasTarget ? target : 1)], query: { enabled: hasTarget } });
+  const bountyAmount = hasTarget && bounty.data ? (bounty.data[1] as bigint) : 0n;
   const ownsTarget = hasTarget && !!owned.data?.includes(target);
 
   function randomVictim() {
@@ -116,20 +117,11 @@ function Room({ address, initialTarget }: { address: `0x${string}`; initialTarge
   }
 
   async function act(fn: "prank" | "payback", from: number, to: number, k: number) {
-    setStatus({ kind: "pending", text: "Confirm in your wallet…" });
-    try {
-      const hash = await writeContractAsync({ ...grudge, functionName: fn, args: [from, to, k] });
-      setStatus({ kind: "pending", text: "Winding up…" });
-      const receipt = await client!.waitForTransactionReceipt({ hash });
-      if (receipt.status !== "success") throw new Error("Transaction reverted.");
-      const block = await client!.getBlock({ blockNumber: receipt.blockNumber });
-      const at = Number(block.timestamp);
-      setStatus({ kind: "ok", text: fn === "payback" ? `Paid back ${chogLabel(to)}.` : `${PRANKS[k].name} landed on ${chogLabel(to)}.` });
-      // Same seed the permanent scar will use, so the animation settles into it seamlessly.
-      setScene({ kind: k, by: from, heavy: fn === "payback", seed: scarSeed(from, k, at, to) });
-    } catch (e) {
-      setStatus({ kind: "error", text: explainError(e) });
-    }
+    const okText = fn === "payback" ? `Paid back ${chogLabel(to)}.` : `${PRANKS[k].name} landed on ${chogLabel(to)}.`;
+    // Refresh after the scene, so the stored scar doesn't appear under the animation.
+    const at = await tx.send({ fn, args: [from, to, k], okText: bountyAmount > 0n ? `${okText} Bounty collected.` : okText, refresh: false });
+    // Same seed the permanent scar will use, so the animation settles into it seamlessly.
+    if (at !== null) setScene({ kind: k, by: from, heavy: fn === "payback", seed: scarSeed(from, k, at, to) });
   }
 
   async function onSceneDone() {
@@ -209,6 +201,12 @@ function Room({ address, initialTarget }: { address: `0x${string}`; initialTarge
                   <span className="rounded-md bg-ink px-2.5 py-1 font-display text-lg font-bold text-paper">{chogLabel(target)}</span>
                   {victimOwner.data && <span className="rounded bg-paper/90 px-2 py-0.5 font-mono text-xs">held by {short(victimOwner.data)}</span>}
                 </div>
+                {bountyAmount > 0n && (
+                  <div className="pointer-events-none absolute top-4 right-4 rotate-3 rounded-lg border-2 border-ink bg-accent px-3 py-1.5 text-center shadow-[3px_3px_0_0_var(--ink)]">
+                    <span className="block font-display text-sm font-extrabold">BOUNTY</span>
+                    <span className="block font-mono text-xs font-bold">{fmtChog(bountyAmount)} $CHOG</span>
+                  </div>
+                )}
                 {status.kind === "pending" && (
                   <div className="absolute inset-x-0 bottom-6 flex justify-center">
                     <span className="animate-pulse rounded-full bg-ink px-4 py-2 font-mono text-sm text-paper">{status.text}</span>
@@ -243,6 +241,7 @@ function Room({ address, initialTarget }: { address: `0x${string}`; initialTarge
                     {me.stats.landed} landed · {me.stats.received} taken · {me.stats.notoriety} notoriety
                   </span>
                 )}
+                {economy.balance !== undefined && <span className="font-mono text-xs text-muted">{fmtChog(economy.balance)} $CHOG</span>}
               </div>
             </div>
 
@@ -281,10 +280,16 @@ function Room({ address, initialTarget }: { address: `0x${string}`; initialTarge
               </p>
             )}
 
-            <Incoming mine={mine} rawScars={me.rawScars} disabled={busy} onPayback={(attacker) => {
-              setTargetText(String(attacker));
-              void act("payback", mine, attacker, kind);
-            }} />
+            <Incoming
+              mine={mine}
+              rawScars={me.rawScars}
+              disabled={busy}
+              onPayback={(attacker) => {
+                setTargetText(String(attacker));
+                void act("payback", mine, attacker, kind);
+              }}
+            />
+            <Beefs mine={mine} disabled={busy} />
           </aside>
         </div>
       )}
@@ -292,9 +297,25 @@ function Room({ address, initialTarget }: { address: `0x${string}`; initialTarge
   );
 }
 
-function Incoming({ mine, rawScars, disabled, onPayback }: { mine: number; rawScars?: readonly { by: number; kind: number; heavy: boolean; at: number }[]; disabled: boolean; onPayback: (attacker: number) => void }) {
+function Incoming({
+  mine,
+  rawScars,
+  disabled,
+  onPayback,
+}: {
+  mine: number;
+  rawScars?: readonly { by: number; kind: number; heavy: boolean; at: number }[];
+  disabled: boolean;
+  onPayback: (attacker: number) => void;
+}) {
   const now = useNow();
-  const list = (rawScars ?? []).filter((s) => s.by !== 0).slice().sort((a, b) => b.at - a.at);
+  const tx = useGrudgeTx();
+  const { scrubPrice, balance } = useChogEconomy();
+  // keep each scar's slot: scrubbing targets a slot
+  const list = (rawScars ?? [])
+    .map((s, slot) => ({ ...s, slot }))
+    .filter((s) => s.by !== 0)
+    .sort((a, b) => b.at - a.at);
   const attackers = [...new Set(list.map((s) => s.by))];
   const paybacks = useReadContracts({
     contracts: attackers.map((by) => ({ ...grudge, functionName: "paybackUntil" as const, args: [BigInt(mine), BigInt(by)] as const })),
@@ -305,18 +326,22 @@ function Incoming({ mine, rawScars, disabled, onPayback }: { mine: number; rawSc
     const r = paybacks.data?.[i];
     if (r?.status === "success" && now > 0 && Number(r.result) >= now) open.set(by, Number(r.result));
   });
+  const cantAfford = scrubPrice !== undefined && balance !== undefined && balance < scrubPrice;
 
   return (
     <section className="flex flex-col gap-3">
-      <h3 className="font-display text-lg font-bold">Done to {chogLabel(mine)}</h3>
+      <div className="flex items-baseline justify-between">
+        <h3 className="font-display text-lg font-bold">Done to {chogLabel(mine)}</h3>
+        {list.length > 0 && <span className="font-mono text-xs text-muted">{list.length}/8 scars</span>}
+      </div>
       {list.length === 0 ? (
         <p className="text-sm text-muted">Clean face. Nobody&apos;s dared yet.</p>
       ) : (
         <ul className="flex flex-col divide-y divide-line rounded-xl border-2 border-ink">
-          {list.map((s, i) => (
-            <li key={`${s.by}-${s.at}-${i}`} className="flex items-center gap-3 px-3 py-2.5">
+          {list.map((s) => (
+            <li key={`${s.slot}-${s.at}`} className="flex flex-wrap items-center gap-3 px-3 py-2.5">
               <PrankIcon kind={s.kind} className="size-6 shrink-0" />
-              <span className="flex-1 text-sm">
+              <span className="min-w-0 flex-1 text-sm">
                 <span className="font-semibold">{PRANKS[s.kind]?.name}</span> by{" "}
                 <Link href={`/chog/${s.by}`} className="font-mono underline">
                   #{s.by}
@@ -324,19 +349,113 @@ function Incoming({ mine, rawScars, disabled, onPayback }: { mine: number; rawSc
                 {s.heavy && <span className="ml-1.5 rounded bg-danger px-1 py-0.5 font-mono text-[10px] text-paper">PAYBACK</span>}
                 <span className="block font-mono text-xs text-muted">{timeAgo(s.at, now)}</span>
               </span>
-              {open.has(s.by) && (
+              <span className="flex items-center gap-2">
+                {open.has(s.by) && (
+                  <button
+                    onClick={() => onPayback(s.by)}
+                    disabled={disabled || tx.busy}
+                    className="rounded-lg border-2 border-ink bg-danger px-2.5 py-1.5 font-display text-sm font-extrabold text-paper shadow-[2px_2px_0_0_var(--ink)] disabled:opacity-40"
+                  >
+                    PAY BACK
+                  </button>
+                )}
                 <button
-                  onClick={() => onPayback(s.by)}
-                  disabled={disabled}
-                  className="rounded-lg border-2 border-ink bg-danger px-2.5 py-1.5 font-display text-sm font-extrabold text-paper shadow-[2px_2px_0_0_var(--ink)] disabled:opacity-40"
+                  onClick={() => tx.send({ fn: "scrub", args: [mine, s.slot], spend: scrubPrice, okText: `Scrubbed the ${PRANKS[s.kind]?.name.toLowerCase()} off.` })}
+                  disabled={disabled || tx.busy || cantAfford || scrubPrice === undefined}
+                  title={cantAfford ? `Needs ${fmtChog(scrubPrice)} $CHOG` : "Burn $CHOG to clean this scar off"}
+                  className="rounded-lg border-2 border-ink px-2.5 py-1.5 text-xs font-bold hover:bg-ink hover:text-paper disabled:opacity-40"
                 >
-                  PAY BACK
+                  Scrub · {fmtChog(scrubPrice)}
                 </button>
-              )}
+              </span>
             </li>
           ))}
         </ul>
       )}
+      <TxLine status={tx.status} />
     </section>
+  );
+}
+
+/** Rivals of your Chog, with heat and the truce handshake (both sides burn $CHOG). */
+function Beefs({ mine, disabled }: { mine: number; disabled: boolean }) {
+  const log = useChogLog(mine);
+  const tx = useGrudgeTx();
+  const { trucePrice, balance } = useChogEconomy();
+  const rivals = topRivals(mine, log.data ?? []);
+  const reads = useReadContracts({
+    contracts: rivals.flatMap((r) => [
+      { ...grudge, functionName: "heat" as const, args: [mine, r.id] as const },
+      { ...grudge, functionName: "truceOffered" as const, args: [BigInt(mine), BigInt(r.id)] as const },
+      { ...grudge, functionName: "truceOffered" as const, args: [BigInt(r.id), BigInt(mine)] as const },
+    ]),
+    query: { enabled: rivals.length > 0 },
+  });
+  const cantAfford = trucePrice !== undefined && balance !== undefined && balance < trucePrice;
+
+  if (!rivals.length) return null;
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex items-baseline justify-between">
+        <h3 className="font-display text-lg font-bold">Beefs</h3>
+        <span className="font-mono text-xs text-muted">truce: both sides burn {fmtChog(trucePrice)}</span>
+      </div>
+      <ul className="flex flex-col divide-y divide-line rounded-xl border-2 border-ink">
+        {rivals.map((r, i) => {
+          const get = (k: number) => reads.data?.[i * 3 + k];
+          const heat = get(0)?.status === "success" ? Number(get(0)!.result) : 0;
+          const iOffered = get(1)?.status === "success" && get(1)!.result === true;
+          const theyOffered = get(2)?.status === "success" && get(2)!.result === true;
+          return (
+            <li key={r.id} className="flex items-center gap-3 px-3 py-2.5">
+              <Image src={portraitSrc(r.id)} alt="" width={36} height={36} className="rounded-md border-2 border-ink" />
+              <span className="min-w-0 flex-1 text-sm">
+                <Link href={`/chog/${r.id}`} className="font-semibold underline decoration-2 underline-offset-2">
+                  {chogLabel(r.id)}
+                </Link>
+                <span className="block font-mono text-xs text-muted">
+                  {r.dealt} dealt · {r.taken} taken
+                </span>
+              </span>
+              <span className="flex gap-1" aria-label={`heat ${heat} of 3`}>
+                {[0, 1, 2].map((k) => (
+                  <span key={k} className={`h-5 w-2 rounded-full border-2 border-ink ${k < heat ? "bg-danger" : ""}`} />
+                ))}
+              </span>
+              {theyOffered ? (
+                <button
+                  onClick={() => tx.send({ fn: "truce", args: [mine, r.id], spend: trucePrice, okText: `Truce with ${chogLabel(r.id)}. Beef over.` })}
+                  disabled={disabled || tx.busy || cantAfford}
+                  className="rounded-lg border-2 border-ink bg-ok px-2.5 py-1.5 text-xs font-bold text-paper disabled:opacity-40"
+                >
+                  Accept truce
+                </button>
+              ) : iOffered ? (
+                <span className="rounded-lg border-2 border-dashed border-line px-2.5 py-1.5 text-xs text-muted">Truce offered</span>
+              ) : heat > 0 ? (
+                <button
+                  onClick={() => tx.send({ fn: "truce", args: [mine, r.id], spend: trucePrice, okText: `Truce offered to ${chogLabel(r.id)}.` })}
+                  disabled={disabled || tx.busy || cantAfford}
+                  className="rounded-lg border-2 border-ink px-2.5 py-1.5 text-xs font-bold hover:bg-ink hover:text-paper disabled:opacity-40"
+                >
+                  Offer truce
+                </button>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+      <TxLine status={tx.status} />
+    </section>
+  );
+}
+
+function TxLine({ status }: { status: TxStatus }) {
+  if (status.kind === "idle") return null;
+  const color = status.kind === "error" ? "text-danger" : status.kind === "ok" ? "text-ok" : "text-muted";
+  return (
+    <p role="status" className={`text-sm font-semibold ${color}`}>
+      {status.text}
+    </p>
   );
 }

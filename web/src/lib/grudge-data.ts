@@ -107,3 +107,18 @@ export function useLiveLog(keep = 120, intervalMs = 1500) {
 
   return { entries, fresh };
 }
+
+/** Chogs this one has traded pranks with, most interactions first. */
+export function topRivals(id: number, log: Entry[]) {
+  const m = new Map<number, { id: number; dealt: number; taken: number }>();
+  for (const e of log) {
+    if (e.act !== ACT.PRANK && e.act !== ACT.PAYBACK) continue;
+    const other = e.from === id ? e.to : e.from;
+    if (!other || other === id) continue;
+    const r = m.get(other) ?? { id: other, dealt: 0, taken: 0 };
+    if (e.from === id) r.dealt++;
+    else r.taken++;
+    m.set(other, r);
+  }
+  return [...m.values()].sort((a, b) => b.dealt + b.taken - (a.dealt + a.taken)).slice(0, 4);
+}

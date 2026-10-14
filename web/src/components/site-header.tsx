@@ -6,6 +6,7 @@ import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { injected } from "wagmi/connectors";
 import { isLocal } from "@/lib/chains";
 import { setMuted, useMuted } from "@/lib/sfx";
+import { WrongNetwork } from "./wrong-network";
 
 const NAV = [
   { href: "/", label: "The Wall" },
@@ -64,6 +65,7 @@ export function SiteHeader() {
           </Link>
         ))}
       </nav>
+      <WrongNetwork />
     </header>
   );
 }
