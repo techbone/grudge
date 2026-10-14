@@ -57,6 +57,15 @@ export function useGrudgeTx() {
           await client.waitForTransactionReceipt({ hash: h });
         }
       }
+      // Dry-run first, so a rule like "already pranked today" comes back as a readable reason
+      // instead of a reverted transaction.
+      await client.simulateContract({
+        account: address,
+        address: GRUDGE_ADDRESS,
+        abi: grudgeAbi as Abi,
+        functionName: opts.fn,
+        args: opts.args as never,
+      });
       setStatus({ kind: "pending", text: "Confirm in your wallet…" });
       const hash = await writeContractAsync({
         chainId: activeChain.id,
