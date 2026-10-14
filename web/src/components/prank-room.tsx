@@ -9,7 +9,7 @@ import { injected } from "wagmi/connectors";
 import { isLocal } from "@/lib/chains";
 import { chogLabel, getChog, portraitSrc } from "@/lib/chogs";
 import { GRUDGE_ADDRESS, isValidId, MAX_ID, MOVES_PER_DAY, PRANKS, timeAgo } from "@/lib/game";
-import { grudge, topRivals, useChogLog, useChogState } from "@/lib/grudge-data";
+import { grudge, topRivals, useChogLog, useChogState, useInheritance } from "@/lib/grudge-data";
 import { fmtChog, useChogEconomy, useGrudgeTx, type TxStatus } from "@/lib/tx";
 import { useChogOwner, useNow, useOwnedChogs } from "@/lib/hooks";
 import { scarSeed } from "./scars/geometry";
@@ -245,6 +245,8 @@ function Room({ address, initialTarget }: { address: `0x${string}`; initialTarge
               </div>
             </div>
 
+            <Inherited mine={mine} address={address} />
+
             <fieldset className="flex flex-col gap-2">
               <legend className="mb-2 font-display text-lg font-bold">Pick your move</legend>
               {PRANKS.map((p, i) => (
@@ -457,5 +459,22 @@ function TxLine({ status }: { status: TxStatus }) {
     <p role="status" className={`text-sm font-semibold ${color}`}>
       {status.text}
     </p>
+  );
+}
+
+/** Shown when the connected wallet bought a Chog that already had history. */
+function Inherited({ mine, address }: { mine: number; address: string }) {
+  const log = useChogLog(mine);
+  const inh = useInheritance(mine, log.data);
+  if (!inh.handover || inh.handover.to.toLowerCase() !== address.toLowerCase()) return null;
+  const rivals = topRivals(mine, inh.inherited).length;
+  return (
+    <div className="relative overflow-hidden rounded-2xl border-2 border-ink bg-ink p-4 text-paper">
+      <span className="absolute top-3 -right-8 rotate-12 bg-accent px-10 py-0.5 font-mono text-[10px] font-bold text-ink">INHERITED</span>
+      <p className="font-display text-lg leading-snug font-bold">
+        {chogLabel(mine)} came with a past: {inh.inherited.length} recorded thing{inh.inherited.length === 1 ? "" : "s"} and {rivals} rival{rivals === 1 ? "" : "s"}.
+      </p>
+      <p className="text-sm opacity-80">Its enemies are yours now, and so are any paybacks it was owed.</p>
+    </div>
   );
 }

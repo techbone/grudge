@@ -122,3 +122,29 @@ export function topRivals(id: number, log: Entry[]) {
   }
   return [...m.values()].sort((a, b) => b.dealt + b.taken - (a.dealt + a.taken)).slice(0, 4);
 }
+
+export type Transfer = { block: string; from: string; to: string; at: number };
+
+/**
+ * "Changed hands" detection: the latest transfer of a Chog that happened after it already had
+ * Grudge history. Whoever holds it now inherited everything recorded before that moment.
+ */
+export function useInheritance(id: number | undefined, log: Entry[] | undefined) {
+  const transfers = useQuery({
+    queryKey: ["transfers", id],
+    enabled: !!id,
+    staleTime: 15_000,
+    queryFn: async () => {
+      const res = await fetch(`/api/transfers/${id}`);
+      if (!res.ok) throw new Error("transfers unavailable");
+      return ((await res.json()) as { transfers: Transfer[] }).transfers;
+    },
+  });
+  const firstActivity = log?.length ? Math.min(...log.map((e) => e.at)) : undefined;
+  const handover =
+    firstActivity === undefined
+      ? undefined
+      : [...(transfers.data ?? [])].reverse().find((t) => t.at > firstActivity && t.from !== "0x0000000000000000000000000000000000000000");
+  const inherited = handover ? (log ?? []).filter((e) => e.at <= handover.at) : [];
+  return { handover, inherited, transfers: transfers.data };
+}

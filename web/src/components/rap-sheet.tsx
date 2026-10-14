@@ -2,12 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { parseUnits } from "viem";
 import { useAccount, useReadContract, useReadContracts } from "wagmi";
 import { chogLabel, getChog, portraitSrc } from "@/lib/chogs";
 import { PRANKS, timeAgo } from "@/lib/game";
-import { ACT, grudge, topRivals, useChogLog, useChogState, type Entry } from "@/lib/grudge-data";
+import { ACT, grudge, topRivals, useChogLog, useChogState, useInheritance, type Entry } from "@/lib/grudge-data";
 import { useChogOwner, useNow } from "@/lib/hooks";
 import { fmtChog, useChogEconomy, useGrudgeTx } from "@/lib/tx";
 import { PrankIcon } from "./prank-icons";
@@ -27,6 +27,10 @@ export function RapSheet({ id }: { id: number }) {
   const isMine = !!address && owner.data?.toLowerCase() === address.toLowerCase();
 
   const rivals = topRivals(id, log.data ?? []);
+  const inh = useInheritance(id, log.data);
+  const handoverAt = inh.handover?.at;
+  const scarsInherited = handoverAt ? state.scars.length - (state.rawScars ?? []).filter((s) => s.by !== 0 && s.at > handoverAt).length : 0;
+  const dividerIndex = handoverAt ? (log.data ?? []).findIndex((e) => e.at <= handoverAt) : -1;
   const heats = useReadContracts({
     contracts: rivals.map((r) => ({ ...grudge, functionName: "heat" as const, args: [id, r.id] as const })),
     query: { enabled: rivals.length > 0 },
@@ -46,6 +50,19 @@ export function RapSheet({ id }: { id: number }) {
               {isMine && <span className="rounded bg-accent px-1.5 py-0.5 text-[11px] font-bold text-ink">YOURS</span>}
             </span>
           </div>
+
+          {inh.handover && (
+            <section className="relative flex flex-col gap-1 overflow-hidden rounded-2xl border-2 border-ink bg-ink p-4 text-paper">
+              <span className="absolute top-3 -right-8 rotate-12 bg-accent px-10 py-0.5 font-mono text-[10px] font-bold text-ink">INHERITED</span>
+              <span className="font-mono text-xs opacity-70">
+                Changed hands {timeAgo(inh.handover.at, now)} · {short(inh.handover.from)} → {short(inh.handover.to)}
+              </span>
+              <p className="font-display text-lg leading-snug font-bold">
+                The new holder inherited {scarsInherited} scar{scarsInherited === 1 ? "" : "s"} and {topRivals(id, inh.inherited).length} rival
+                {topRivals(id, inh.inherited).length === 1 ? "" : "s"}. Its enemies are theirs now.
+              </p>
+            </section>
+          )}
 
           <dl className="grid grid-cols-3 overflow-hidden rounded-2xl border-2 border-ink">
             {[
@@ -123,7 +140,16 @@ export function RapSheet({ id }: { id: number }) {
         {log.data?.length === 0 && <p className="text-muted">Spotless. For now.</p>}
         <ol className="flex flex-col">
           {log.data?.map((e, i) => (
-            <li key={`${e.at}-${i}`} className="flex items-center gap-4 border-b border-line py-3">
+            <Fragment key={`${e.at}-${i}`}>
+            {i === dividerIndex && inh.handover && (
+              <li className="flex items-center gap-3 border-b-2 border-dashed border-ink py-3 font-mono text-xs">
+                <span className="rounded bg-accent px-2 py-0.5 font-bold text-ink">CHANGED HANDS</span>
+                <span className="text-muted">
+                  {short(inh.handover.from)} → {short(inh.handover.to)} · {timeAgo(inh.handover.at, now)}. Everything below came with the Chog.
+                </span>
+              </li>
+            )}
+            <li className="flex items-center gap-4 border-b border-line py-3">
               <span className={`flex size-10 shrink-0 items-center justify-center rounded-full border-2 border-ink ${e.to === id && e.from !== id ? "bg-ink text-paper" : ""}`}>
                 {e.act <= ACT.PAYBACK ? <PrankIcon kind={e.kind} className="size-6" /> : <span className="font-mono text-xs font-bold">{ACT_GLYPH[e.act]}</span>}
               </span>
@@ -132,6 +158,7 @@ export function RapSheet({ id }: { id: number }) {
               </span>
               <span className="font-mono text-xs text-muted">{timeAgo(e.at, now)}</span>
             </li>
+            </Fragment>
           ))}
         </ol>
       </section>
