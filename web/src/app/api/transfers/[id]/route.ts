@@ -102,7 +102,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/transfers/[id]"
         return { ...m, at };
       }),
     );
-    return Response.json({ id, since: snap.from, scannedTo: snap.upTo, transfers: out }, { headers: { "cache-control": "public, max-age=5" } });
+    return Response.json({ id, since: snap.from, scannedTo: snap.upTo, transfers: out }, { headers: { "cache-control": "public, max-age=5, s-maxage=30, stale-while-revalidate=600" } });
   } catch (e) {
     return Response.json({ error: (e as Error).message.split("\n")[0] }, { status: 502 });
   }
