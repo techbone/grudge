@@ -34,6 +34,25 @@ export function Wall() {
   const [follow, setFollow] = useState(true);
   const [hover, setHover] = useState<{ id: number; x: number; y: number } | null>(null);
   const [total, setTotal] = useState<number>();
+  const [intro, setIntro] = useState(false);
+
+  useEffect(() => {
+    let seen = false;
+    try {
+      seen = window.localStorage.getItem("grudge:intro") === "done";
+    } catch {}
+    if (!seen) {
+      const t = setTimeout(() => setIntro(true), 900);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
+  function closeIntro() {
+    setIntro(false);
+    try {
+      window.localStorage.setItem("grudge:intro", "done");
+    } catch {}
+  }
 
   useEffect(() => {
     followRef.current = follow;
@@ -227,6 +246,35 @@ export function Wall() {
       </div>
 
       <p className="pointer-events-none absolute right-6 bottom-6 hidden font-mono text-[11px] text-muted lg:block">drag to pan · scroll to zoom · click a Chog</p>
+
+      {ready && total === 0 && !intro && (
+        <div className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center px-4">
+          <p className="rotate-[-3deg] rounded-xl border-[3px] border-ink bg-accent px-5 py-3 text-center font-display text-2xl font-extrabold shadow-[5px_5px_0_0_var(--ink)] sm:text-3xl">
+            The Wall is clean. Be the first scar.
+          </p>
+        </div>
+      )}
+
+      {intro && (
+        <div className="absolute inset-x-4 bottom-36 z-20 mx-auto max-w-md rounded-2xl border-[3px] border-ink bg-paper p-5 shadow-[6px_6px_0_0_var(--ink)] sm:bottom-24">
+          <button onClick={closeIntro} aria-label="Close" className="absolute top-3 right-3 size-8 rounded-full font-bold hover:bg-ink hover:text-paper">
+            ✕
+          </button>
+          <p className="font-mono text-[11px] tracking-wider text-muted uppercase">New here?</p>
+          <h2 className="mt-1 font-display text-2xl leading-tight font-extrabold">Chogs prank other Chogs. The scars never wash off.</h2>
+          <p className="mt-2 text-sm">
+            This is every Chog Genesis NFT. When one gets graffiti, a stolen hat or a tomato to the face, it lands here live, onchain. Victims get one payback, and a sold Chog keeps its enemies.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link href="/studio" onClick={closeIntro} className="rounded-lg border-2 border-ink bg-accent px-4 py-2 font-bold">
+              Try a prank, no wallet
+            </Link>
+            <Link href="/prank" onClick={closeIntro} className="rounded-lg border-2 border-ink px-4 py-2 font-bold hover:bg-ink hover:text-paper">
+              I hold a Chog
+            </Link>
+          </div>
+        </div>
+      )}
 
       {hover && (
         <div className="pointer-events-none fixed z-40 flex items-center gap-2 rounded-xl border-2 border-ink bg-paper px-2 py-1.5 shadow-[3px_3px_0_0_var(--ink)]" style={{ left: hover.x + 16, top: hover.y + 16 }}>
