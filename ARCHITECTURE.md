@@ -69,14 +69,15 @@ No backend and no database. All state lives in `Grudge.sol` and its events. Art 
 | `/` | **The Wall**: a zoomable, pannable PixiJS mural of all 1,969 Chogs with their scars. New pranks pop in live as events arrive, with a ticker and a "most wanted" strip. |
 | `/chog/[id]` | **Rap sheet**: scarred portrait, timeline of everything done to it and by it, open paybacks, current beefs, notoriety. Shareable OG image. This is the screenshot screen. |
 | `/prank` | **The prank flow**: pick your Chog, pick a target, pick a move, watch the scene play, confirm. Also hosts the payback cinematic. |
-| `/feuds` | **Feud graph**: a draggable force graph of token pairs. Edges thicken with heat, and the hottest beefs glow. |
-| `/bounties` | Open bounties on specific Chogs, claimable by landing a prank on the target. |
+| `/feuds` | **Feud graph**: a draggable d3-force graph of token pairs built from the onchain log. Edges thicken with hits and turn red after a payback. Includes leaderboards: hottest beefs, most wanted, most bullied. |
+| Bounties | Posted and shown on each rap sheet, and badged on the victim in the prank room. A separate `/bounties` page is cut: there's no onchain index of open bounties, and the badge plus rap sheet cover discovery. |
 | `/sandbox` | **The judge path.** No wallet needed. A fake Chog, a bot opponent and a fast clock run on the local TS engine so anyone can see a prank, a payback and a scrub in two minutes. |
 
 - Wallet: wagmi + viem with injected wallets and our own connect UI (RainbowKit dropped: it needs a WalletConnect project id and fights the custom look). On the local fork, a dev-only "play as the holder of Chog #N" uses anvil impersonation.
 - Rendering: prank **scenes** are SVG + GSAP (DrawSVG, MotionPath) drawn over the Chog art in a 1000×1000 box. Each scene is built from `from` tweens, so it settles exactly into the permanent scar, and it uses the same seed (attacker, kind, block time, target) as the stored scar, so the handoff is seamless. PixiJS v8 is used only for the Wall, where 1,969 tiles need WebGL. Wall tiles show the same scar art, rendered to textures.
 - Sound: synthesized in the browser with WebAudio (spray hiss, splat, whoosh, boing, stamp). No audio files. Mute toggle remembered in localStorage.
-- Provenance banner: reads ERC-721 `Transfer` events for the token. If the current owner is new since the last prank, the rap sheet opens with "You inherited this" and lists scars and beefs.
+- Provenance banner: `/api/transfers/[id]` scans Chog Genesis `Transfer` logs since the Grudge deploy block. It uses `rpc2.monad.xyz`, which allows 10k-block windows (the main RPC allows 100), and keeps the result in `'use cache: remote'` so cold serverless instances don't rescan. Chog Genesis isn't ERC721AQueryable, so there's no onchain ownership timestamp to read. If a Chog changed hands after its first Grudge activity, the rap sheet shows an INHERITED card plus a CHANGED HANDS divider in its timeline, and the prank room tells the buyer its enemies are now theirs.
+- Transactions: one `useGrudgeTx` hook switches the wallet to Monad if needed, approves the exact $CHOG burn when the allowance is short, sends, waits and refreshes. A wrong-network strip sits under the header.
 
 ### 3. `engine/` — rules in TypeScript
 
@@ -160,8 +161,8 @@ Hand-made and chunky, not a crypto dashboard. Paper-and-marker feel for the chro
 
 | # | Target | Done when |
 |---|---|---|
-| **M1** — thinnest slice | Oct 15 | Full Grudge.sol (all rules, since it's immutable after M2), unit tests plus a mainnet-fork test. Next.js app: connect wallet, see your Chogs, prank a target, see scars, pay back. Running locally against an anvil fork. |
-| **M2** — the spectacle | Oct 17 | Metadata snapshot, Wall with live events, first 3 prank scenes with sound, rap sheet page. **Mainnet deploy and announce** in the Chog Discord and on X, so real usage exists before judging. |
-| **M3** — escalation | Oct 19 | Payback and heat, remaining scenes, feud graph, $CHOG scrub, truce and bounties, sale ceremony banner. |
+| **M1** — thinnest slice | Oct 15 ✅ Oct 13 | Full Grudge.sol (all rules, since it's immutable after M2), unit tests plus a mainnet-fork test. Next.js app: connect wallet, see your Chogs, prank a target, see scars, pay back. Running locally against an anvil fork. |
+| **M2** — the spectacle | Oct 17 ✅ Oct 13 | Metadata snapshot, Wall with live events, first 3 prank scenes with sound, rap sheet page. **Mainnet deploy and announce** in the Chog Discord and on X, so real usage exists before judging. |
+| **M3** — escalation | Oct 19 | ✅ Oct 14. Wrong-network prompt, $CHOG scrub, truce and bounties in the app, inheritance banner, feud graph with leaderboards. |
 | **M4** — judge-proof | Oct 21 | Sandbox mode, onboarding and empty, loading and error states, polish pass, OG images. |
 | **M5** — ship | Oct 22 | README, demo video script, submission copy, usage stats for the "What's next" field. Oct 23 morning is buffer only. |
