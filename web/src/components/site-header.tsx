@@ -11,6 +11,7 @@ import { WrongNetwork } from "./wrong-network";
 const NAV = [
   { href: "/", label: "The Wall" },
   { href: "/prank", label: "Prank" },
+  { href: "/feuds", label: "Feuds" },
   { href: "/studio", label: "Studio" },
 ];
 
