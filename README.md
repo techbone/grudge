@@ -4,6 +4,24 @@ Chogs prank other Chogs onchain. Every prank leaves a scar on the target's art, 
 
 Built for [Chogathon 2026](https://chogathon.chog.xyz) on Monad, using the [Chog Genesis](https://monadscan.com/address/0xc96d31f8626c6d03fae5dcd3d61e3fb9f4a73763) collection.
 
+**Live:** https://grudge-taupe.vercel.app
+
+## Try it
+
+- **No wallet:** [`/studio`](https://grudge-taupe.vercel.app/studio). Play every prank on any of the 1,969 Chogs, including the heavy payback versions. Nothing touches the chain.
+- **Watch:** [the Wall](https://grudge-taupe.vercel.app) shows every Chog live from the contract. [Feuds](https://grudge-taupe.vercel.app/feuds) maps who's beefing with whom. Every Chog has a rap sheet at `/chog/<id>`, with its own share card.
+- **Play:** hold a Chog Genesis on Monad, connect, and open [`/prank`](https://grudge-taupe.vercel.app/prank).
+
+## What's in it
+
+- **Five pranks:** graffiti, hat steal, stink cloud, tomato, googly eyes. Each is an animated scene with sound that settles into a permanent scar on the target's art.
+- **Daily limits:** 3 moves a day per Chog, and one hit per target per day.
+- **Payback:** the victim gets one free payback for 3 days. It lands heavy, with a PAYBACK stamp.
+- **Heat:** each beef between two Chogs runs 0–3, and cools by one level a day.
+- **$CHOG burns:** scrub a scar (500), call a truce (250 each side), or post a bounty on any Chog. The next Chog to prank it collects, and 10% is burned.
+- **Inheritance:** state is keyed by token id and ownership is checked onchain, so a sold Chog keeps its scars, rivals and open paybacks. Its rap sheet shows exactly what changed hands.
+- **No indexer, no database:** every action is also appended to an onchain history log, which feeds the Wall, the feed, rap sheets and feuds.
+
 ## Deployment
 
 | | Monad mainnet (chain 143) |
