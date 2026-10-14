@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { encodeAbiParameters, keccak256, pad, parseUnits, toHex } from "viem";
-import { usePublicClient, useConnect } from "wagmi";
+import { useAccount, usePublicClient, useConnect } from "wagmi";
 import { mock } from "wagmi/connectors";
 import { monadLocal } from "@/lib/chains";
 import { CHOG_ADDRESS, CHOG_TOKEN_ADDRESS, chogOwnerAbi, isValidId } from "@/lib/game";
@@ -16,6 +16,44 @@ async function anvil(method: string, params: unknown[]) {
   const json = await res.json();
   if (json.error) throw new Error(json.error.message);
   return json.result;
+}
+
+const KEY = "grudge:dev-holder";
+
+/** Impersonate a holder on anvil, top them up with gas and 10,000 test $CHOG. */
+async function impersonate(holder: `0x${string}`) {
+  await anvil("anvil_impersonateAccount", [holder]);
+  await anvil("anvil_setBalance", [holder, "0x8AC7230489E80000"]); // 10 MON for gas
+  // balances live in storage slot 0 of the token; only top up if they're running low
+  const slot = keccak256(encodeAbiParameters([{ type: "address" }, { type: "uint256" }], [holder, 0n]));
+  const current = BigInt(await anvil("eth_getStorageAt", [CHOG_TOKEN_ADDRESS, slot, "latest"]));
+  if (current < parseUnits("1000", 18)) await anvil("anvil_setStorageAt", [CHOG_TOKEN_ADDRESS, slot, pad(toHex(parseUnits("10000", 18)))]);
+}
+
+export function forgetDevHolder() {
+  try {
+    window.localStorage.removeItem(KEY);
+  } catch {}
+}
+
+/** Local fork only: after a reload or a typed URL, reconnect as the holder you were playing. */
+export function DevAutoReconnect() {
+  const { isConnected } = useAccount();
+  const { connectAsync } = useConnect();
+  const tried = useRef(false);
+  useEffect(() => {
+    if (isConnected || tried.current) return;
+    tried.current = true;
+    let holder: string | null = null;
+    try {
+      holder = window.localStorage.getItem(KEY);
+    } catch {}
+    if (!holder) return;
+    impersonate(holder as `0x${string}`)
+      .then(() => connectAsync({ connector: mock({ accounts: [holder as `0x${string}`] }) }))
+      .catch(() => forgetDevHolder());
+  }, [isConnected, connectAsync]);
+  return null;
 }
 
 /**
@@ -42,12 +80,11 @@ export function DevPlayAs() {
         functionName: "ownerOf",
         args: [BigInt(n)],
       });
-      await anvil("anvil_impersonateAccount", [holder]);
-      await anvil("anvil_setBalance", [holder, "0x8AC7230489E80000"]); // 10 MON for gas
-      // 10,000 test $CHOG: balances live in storage slot 0 of the token
-      const slot = keccak256(encodeAbiParameters([{ type: "address" }, { type: "uint256" }], [holder, 0n]));
-      await anvil("anvil_setStorageAt", [CHOG_TOKEN_ADDRESS, slot, pad(toHex(parseUnits("10000", 18)))]);
+      await impersonate(holder);
       await connectAsync({ connector: mock({ accounts: [holder] }) });
+      try {
+        window.localStorage.setItem(KEY, holder);
+      } catch {}
     } catch (e) {
       setError((e as Error).message);
     } finally {

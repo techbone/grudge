@@ -7,6 +7,7 @@ import { injected } from "wagmi/connectors";
 import { isLocal } from "@/lib/chains";
 import { setMuted, useMuted } from "@/lib/sfx";
 import { WrongNetwork } from "./wrong-network";
+import { DevAutoReconnect, forgetDevHolder } from "./dev-play-as";
 
 const NAV = [
   { href: "/", label: "The Wall" },
@@ -49,7 +50,12 @@ export function SiteHeader() {
             sound {muted ? "off" : "on"}
           </button>
           {isConnected && address ? (
-            <button onClick={() => disconnect()} title="Disconnect" className="rounded-md border-2 border-ink px-3 py-1 font-mono text-xs hover:bg-ink hover:text-paper">
+            <button
+              onClick={() => {
+                if (isLocal) forgetDevHolder();
+                disconnect();
+              }}
+              title="Disconnect" className="rounded-md border-2 border-ink px-3 py-1 font-mono text-xs hover:bg-ink hover:text-paper">
               {short(address)}
             </button>
           ) : (
@@ -67,6 +73,7 @@ export function SiteHeader() {
         ))}
       </nav>
       <WrongNetwork />
+      {isLocal && <DevAutoReconnect />}
     </header>
   );
 }
