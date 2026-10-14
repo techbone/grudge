@@ -84,6 +84,17 @@ export function RapSheet({ id }: { id: number }) {
             >
               {isMine ? "Open the prank room" : "Prank this Chog"}
             </Link>
+            <button
+              onClick={() => {
+                const taken = state.stats?.received ?? 0;
+                const text = taken > 0 ? `Look what they did to ${chogLabel(id)}. ${taken} scar${taken === 1 ? "" : "s"} and counting.` : `${chogLabel(id)} has a clean face. For now.`;
+                const url = `${window.location.origin}/chog/${id}`;
+                window.open(`https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, "_blank", "noopener,noreferrer");
+              }}
+              className="rounded-xl border-[3px] border-ink bg-paper px-5 py-3 font-display text-lg font-bold shadow-[4px_4px_0_0_var(--ink)] transition-all hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 active:shadow-none"
+            >
+              Share on X
+            </button>
           </div>
 
           <BountyPanel id={id} />

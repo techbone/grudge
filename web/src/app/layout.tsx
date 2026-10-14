@@ -28,9 +28,14 @@ const marker = Permanent_Marker({
   weight: "400",
 });
 
+const SITE = process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE),
   title: "Grudge",
   description: "Chogs prank other Chogs onchain. Scars stick to the token, and so do the beefs.",
+  openGraph: { siteName: "Grudge", type: "website" },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

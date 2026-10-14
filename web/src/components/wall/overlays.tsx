@@ -1,16 +1,16 @@
 "use client";
 
 import type * as PIXI from "pixi.js";
-import { renderToStaticMarkup } from "react-dom/server";
 import { ScarArt, ScarFilterDefs } from "../scars/art";
 import type { PortraitScar } from "../scars/portrait";
+import { toSvg } from "../scars/to-svg";
 
 /**
  * The same scar art as the portraits, rendered to a standalone SVG for a Wall tile texture.
  * SVG-as-image can't see page CSS variables, so font references are swapped for real names.
  */
 export function overlaySvg(scars: PortraitScar[], skin?: string) {
-  const markup = renderToStaticMarkup(
+  const markup = toSvg(
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="256" height="256">
       <ScarFilterDefs />
       {scars.map((s) => (

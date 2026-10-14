@@ -1,6 +1,3 @@
-"use client";
-
-import { useId } from "react";
 import {
   between,
   blobPath,
@@ -108,7 +105,7 @@ function Graffiti({ seed, by, heavy, scene }: ScarProps) {
   const rot = between(r, -6, 6);
   const w = heavy ? 44 : 34;
   const tag = pick(r, TAG_SPOTS);
-  const clip = `tag-${useId()}`;
+  const clip = `tag-${seed}`;
 
   return (
     <g>
@@ -168,8 +165,7 @@ function SprayCan({ color }: { color: string }) {
 
 function HatSteal({ seed, by, heavy, skin, scene, src }: ScarProps) {
   const r = rng(seed);
-  const uid = useId();
-  const patchId = `patch-${uid}`;
+  const patchId = `patch-${seed}`;
   const cut = FACE.brimY + 45 + between(r, -10, 15);
   const patch = tornPatchPath(r, cut);
   const dome = { cx: 590 + between(r, -20, 20), cy: FACE.brimY + 70, rx: 370, ry: 340 };
