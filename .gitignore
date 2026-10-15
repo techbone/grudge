@@ -29,3 +29,7 @@ coverage/
 # forge run history duplicates; run-latest.json is the record
 contracts/broadcast/**/run-[0-9]*.json
 contracts/broadcast/**/*.lock
+
+# internal submission notes, not for judges
+SUBMISSION.md
+DEMO_SCRIPT.md
