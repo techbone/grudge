@@ -58,6 +58,13 @@ export function useChogOwner(id: number | undefined) {
   });
 }
 
+/** On phones the controls sit under the portrait, so bring the victim back into view as a prank starts. */
+export function revealOnMobile(el: HTMLElement | null) {
+  if (!el || window.innerWidth >= 1024) return;
+  const r = el.getBoundingClientRect();
+  if (r.top < 70 || r.bottom > window.innerHeight) el.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
 /** Unix seconds, refreshed every `intervalMs`. 0 until mounted, so prerendering stays pure. */
 export function useNow(intervalMs = 15_000) {
   const [now, setNow] = useState(0);

@@ -3,7 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAccount, useConnect, useReadContract, useReadContracts } from "wagmi";
 import { injected } from "wagmi/connectors";
 import { isLocal } from "@/lib/chains";
@@ -11,7 +11,7 @@ import { chogLabel, getChog, portraitSrc } from "@/lib/chogs";
 import { GRUDGE_ADDRESS, isValidId, MAX_ID, MOVES_PER_DAY, PRANKS, timeAgo } from "@/lib/game";
 import { grudge, topRivals, useChogLog, useChogState, useInheritance } from "@/lib/grudge-data";
 import { fmtChog, useChogEconomy, useGrudgeTx, type TxStatus } from "@/lib/tx";
-import { useChogOwner, useNow, useOwnedChogs } from "@/lib/hooks";
+import { revealOnMobile, useChogOwner, useNow, useOwnedChogs } from "@/lib/hooks";
 import { scarSeed } from "./scars/geometry";
 import { Portrait, type PortraitScar } from "./scars/portrait";
 import { DevPlayAs } from "./dev-play-as";
@@ -90,6 +90,7 @@ function Lobby() {
 function Room({ address, initialTarget }: { address: `0x${string}`; initialTarget?: number }) {
   const qc = useQueryClient();
   const tx = useGrudgeTx();
+  const stage = useRef<HTMLDivElement>(null);
   const status = tx.status;
   const economy = useChogEconomy();
   const owned = useOwnedChogs(address);
@@ -121,6 +122,7 @@ function Room({ address, initialTarget }: { address: `0x${string}`; initialTarge
     // Refresh after the scene, so the stored scar doesn't appear under the animation.
     const at = await tx.send({ fn, args: [from, to, k], okText: bountyAmount > 0n ? `${okText} Bounty collected.` : okText, refresh: false });
     // Same seed the permanent scar will use, so the animation settles into it seamlessly.
+    if (at !== null) revealOnMobile(stage.current);
     if (at !== null) setScene({ kind: k, by: from, heavy: fn === "payback", seed: scarSeed(from, k, at, to) });
   }
 
@@ -195,7 +197,7 @@ function Room({ address, initialTarget }: { address: `0x${string}`; initialTarge
             </div>
 
             {hasTarget ? (
-              <div className="relative">
+              <div ref={stage} className="relative scroll-mt-20">
                 <Portrait id={target} skin={getChog(target)?.traits.Skin} scars={victim.scars} scene={scene} onSceneDone={onSceneDone} className={card} />
                 <div className="pointer-events-none absolute top-4 left-4 flex flex-col items-start gap-2">
                   <span className="rounded-md bg-ink px-2.5 py-1 font-display text-lg font-bold text-paper">{chogLabel(target)}</span>

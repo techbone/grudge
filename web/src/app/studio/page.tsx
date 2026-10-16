@@ -1,21 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Portrait, type PortraitScar } from "@/components/scars/portrait";
-import { PRANKS } from "@/lib/game";
+import { chogLabel } from "@/lib/chogs";
+import { revealOnMobile } from "@/lib/hooks";
+import { MAX_ID, PRANKS } from "@/lib/game";
 
 const randomSeed = () => Math.floor(Math.random() * 2 ** 31);
 
 /** Scene studio: play every prank on any Chog. Doubles as the judge-friendly preview. */
 export default function Studio() {
   const [id, setId] = useState(1);
+  // what's typed in the box; only a valid id (1-1969) changes the Chog, so you can clear and retype freely
+  const [draft, setDraft] = useState("1");
   const [kind, setKind] = useState(0);
   const [heavy, setHeavy] = useState(false);
   const [scars, setScars] = useState<PortraitScar[]>([]);
   const [scene, setScene] = useState<PortraitScar | null>(null);
+  const stage = useRef<HTMLDivElement>(null);
+
+  function pick(n: number) {
+    const next = ((((n - 1) % MAX_ID) + MAX_ID) % MAX_ID) + 1; // wraps: 1969 → 1 and 1 → 1969
+    if (next !== id) setScars([]);
+    setId(next);
+    setDraft(String(next));
+  }
 
   function fire() {
     if (scene) return;
+    revealOnMobile(stage.current);
     setScene({ kind, heavy, seed: randomSeed(), by: 1 + Math.floor(Math.random() * 1969) });
   }
 
@@ -27,32 +40,72 @@ export default function Studio() {
       </header>
 
       <section className="grid gap-8 lg:grid-cols-[minmax(0,520px)_1fr]">
-        <Portrait
-          id={id}
-          scars={scars}
-          scene={scene}
-          onSceneDone={() => {
-            setScars((s) => [...s, scene!].slice(-8));
-            setScene(null);
-          }}
-          className="rounded-2xl border-[3px] border-ink shadow-[8px_8px_0_0_var(--ink)]"
-        />
+        <div ref={stage} className="scroll-mt-20">
+          <Portrait
+            id={id}
+            scars={scars}
+            scene={scene}
+            onSceneDone={() => {
+              setScars((s) => [...s, scene!].slice(-8));
+              setScene(null);
+            }}
+            className="rounded-2xl border-[3px] border-ink shadow-[8px_8px_0_0_var(--ink)]"
+          />
+        </div>
 
         <div className="flex flex-col gap-6">
-          <label className="flex items-center gap-3 text-sm">
-            Chog #
-            <input
-              type="number"
-              min={1}
-              max={1969}
-              value={id}
-              onChange={(e) => {
-                setId(Math.min(1969, Math.max(1, Number(e.target.value) || 1)));
-                setScars([]);
-              }}
-              className="w-24 rounded border-2 border-ink bg-transparent px-2 py-1 font-mono"
-            />
-          </label>
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-semibold">
+              {chogLabel(id)} <span className="font-mono text-muted">· token {id} of {MAX_ID}</span>
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => pick(id - 1)}
+                aria-label="Previous Chog"
+                className="size-11 rounded-lg border-2 border-ink font-display text-3xl leading-none font-bold hover:bg-ink hover:text-paper active:translate-y-0.5"
+              >
+                ‹
+              </button>
+              <label className="flex h-11 items-center rounded-lg border-2 border-ink font-mono">
+                <span className="pl-3 text-muted">#</span>
+                <input
+                  value={draft}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  aria-label="Chog number, 1 to 1969"
+                  onChange={(e) => {
+                    const t = e.target.value.replace(/\D/g, "").slice(0, 4);
+                    const n = Number(t);
+                    if (n > MAX_ID) return; // ignore a keystroke that would pass 1969
+                    setDraft(t);
+                    if (n >= 1 && n !== id) {
+                      setId(n);
+                      setScars([]);
+                    }
+                  }}
+                  onFocus={(e) => e.target.select()}
+                  onBlur={() => setDraft(String(id))}
+                  className="w-20 bg-transparent px-2 text-lg outline-none"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => pick(id + 1)}
+                aria-label="Next Chog"
+                className="size-11 rounded-lg border-2 border-ink font-display text-3xl leading-none font-bold hover:bg-ink hover:text-paper active:translate-y-0.5"
+              >
+                ›
+              </button>
+              <button
+                type="button"
+                onClick={() => pick(1 + Math.floor(Math.random() * MAX_ID))}
+                className="h-11 rounded-lg border-2 border-ink px-4 font-semibold hover:bg-ink hover:text-paper active:translate-y-0.5"
+              >
+                Random Chog
+              </button>
+            </div>
+          </div>
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {PRANKS.map((p, i) => (
