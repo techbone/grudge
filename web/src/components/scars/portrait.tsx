@@ -86,9 +86,8 @@ export function Portrait({ id, skin, scars, scene, onSceneDone, className = "", 
   useEffect(() => {
     if (!scene || !sceneG.current) return;
     const ctx = gsap.context(() => {
-      const tl = playScene(sceneG.current!, scene.kind, scene.heavy, wrap.current);
+      const tl = playScene(sceneG.current!, scene.kind, scene.heavy, wrap.current, reducedMotion());
       tl.eventCallback("onComplete", () => doneRef.current?.());
-      if (reducedMotion()) tl.progress(1);
     });
     return () => ctx.revert();
   }, [scene]);

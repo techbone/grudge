@@ -9,6 +9,8 @@ gsap.registerPlugin(DrawSVGPlugin, MotionPathPlugin);
 
 type El = Element | null | undefined;
 
+let spin = 1; // 0 when calm: tomatoes fly straight instead of tumbling
+
 function shake(tl: gsap.core.Timeline, el: El, at: gsap.Position, power = 14) {
   if (!el) return;
   tl.to(el, { x: `random(-${power},${power})`, y: `random(-${power * 0.7},${power * 0.7})`, duration: 0.04, repeat: 7, yoyo: true, ease: "none" }, at);
@@ -19,9 +21,15 @@ function shake(tl: gsap.core.Timeline, el: El, at: gsap.Position, power = 14) {
  * Builds the animated prank on a freshly mounted <ScarArt scene /> group. Most tweens are
  * `from` tweens, so the scar ends exactly in its static, permanent pose.
  */
-export function playScene(root: SVGGElement, kind: number, heavy: boolean, shakeEl?: HTMLElement | null) {
+/**
+ * `calm` is for people who asked their device to reduce motion. The prank still plays, because
+ * it's the point of the app, but without screen shake, wobble or spinning.
+ */
+export function playScene(root: SVGGElement, kind: number, heavy: boolean, shakeTarget?: HTMLElement | null, calm = false) {
   const q = gsap.utils.selector(root);
   const tl = gsap.timeline();
+  const shakeEl = calm ? null : shakeTarget;
+  spin = calm ? 0 : 1;
 
   if (kind === 0) graffiti(tl, q, shakeEl);
   else if (kind === 1) hatSteal(tl, q, shakeEl);
@@ -133,7 +141,7 @@ function tomato(tl: gsap.core.Timeline, q: Q, shakeEl?: HTMLElement | null) {
   tl.to(t, {
     motionPath: { path: [{ x: 520, y: 1180 }, { x: (tx + 520) / 2, y: Math.max(170, ty - 280) }, { x: tx, y: ty }], curviness: 1.1 },
     scale: 1,
-    rotation: 540,
+    rotation: 540 * spin,
     duration: 0.6,
     ease: "power2.in",
   });
